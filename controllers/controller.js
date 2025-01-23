@@ -59,10 +59,6 @@ export const sendText = (req,res)=>{
   }
 }
 
-export const apiMessage = (req,res)=>{
-  res.send("<h1>User API running...</h1>")
-}
-
 export const getLoginInfo = async(req, res,next) =>{
   try {
     

@@ -27,5 +27,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/users/',userRoutes);
 app.use(handleError);
 
+app.get("/",(req,res)=>{
+  res.send("<h1>User API running...</h1>")
+})
 
 export {app};
