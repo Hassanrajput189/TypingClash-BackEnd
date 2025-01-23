@@ -47,9 +47,7 @@ export const logout = (req, res) => {
 
 export const sendText = (req,res)=>{
   try{
-    const text1 = `Paragraphs are the building blocks of papers. Many students define paragraphs in terms of length: a paragraph is a group of at least five sentences, a paragraph is half a page long, etc. In reality, though, the unity and coherence of ideas among sentences is what constitutes a paragraph.
-    Paragraphs are the building blocks of papers. Many students define paragraphs in terms of length: a paragraph is a group of at least five sentences, a paragraph is half a page long, etc. In reality, though, the unity and coherence of ideas among sentences is what constitutes a paragraph.
-    Paragraphs are the building blocks of papers. Many students define paragraphs in terms of length: a paragraph is a group of at least five sentences, a paragraph is half a page long, etc. In reality, though, the unity and coherence of ideas among sentences is what constitutes a paragraph.`;
+    const text1 = `Paragraphs are the building blocks of papers. Many students define paragraphs in terms of length: a paragraph is a group of at least five sentences, a paragraph is half a page long, etc. In reality, though, the unity and coherence of ideas among sentences is what constitutes a paragraph.`
     const text2 = `The Great Wall of China is the longest man-made structure in the world, standing at approximately 13,043 miles (20,465 kilometers) long and 6,100 miles (9,840 kilometers) high. It was built primarily for defense against invasions from invading forces, primarily the Mongol Empire, and is the only significant structure in the world`;
     const text3 = `Muhammad Ali Jinnah (born Mahomedali Jinnahbhai; 25 December 1876  11 September 1948) was a barrister, politician, and the founder of Pakistan. Jinnah served as the leader of the All-India Muslim League from 1913 until the inception of Pakistan on 14 August`
     res.json({ text1, text2, text3 });
@@ -58,6 +56,7 @@ export const sendText = (req,res)=>{
     next(error);
   }
 }
+
 
 export const getLoginInfo = async(req, res,next) =>{
   try {
