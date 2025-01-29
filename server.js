@@ -16,7 +16,14 @@ const io = new Server(server, {
     methods: ["GET", "POST"],
     credentials: true,
     transports: ['websocket', 'polling'],
-    allowedHeaders: ["Content-Type", "Authorization", "Origin", "X-Requested-With", "Cookie"]
+    allowedHeaders: [
+      "Content-Type", 
+      "Authorization", 
+      "Origin", 
+      "X-Requested-With", 
+      "Cookie",
+      "User-Agent" 
+    ],
     
   }
 });
