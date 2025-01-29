@@ -11,7 +11,9 @@ const io = new Server(server, {
     origin: [
       "http://localhost:5173",
       "https://typing-clash-front-end.vercel.app",
-      "https://typing-clash-front-end-git-main-hassanrajput189s-projects.vercel.app"
+      "https://typing-clash-front-end-git-main-hassanrajput189s-projects.vercel.app",
+      "wss://typing-clash-front-end.vercel.app",
+      "wss://typing-clash-front-end-git-main-hassanrajput189s-projects.vercel.app"
     ],
     methods: ["GET", "POST"],
     credentials: true,
@@ -24,7 +26,9 @@ const io = new Server(server, {
       "Cookie",
       "User-Agent" 
     ],
-    
+    headers:{
+      "User-Agent": "Mozilla/5.0 (Macintosh)",
+    }
   }
 });
 connectDB();
