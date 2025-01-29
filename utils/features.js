@@ -1,16 +1,15 @@
-import jwt from "jsonwebtoken";
-
+import jwt from 'jsonwebtoken'
 export const createCookie = (user, res, message, statusCode = 200) => {
-  const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET);
+  const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: "15d" });
 
   const fifteenDaysInMilliseconds = 15 * 24 * 60 * 60 * 1000;
 
   res.status(statusCode).cookie("token", token, {
     path: "/",
     httpOnly: true,
-    sameSite: process.env.NODE_ENV === "development" ? 'lax' : 'none',
-    secure: process.env.NODE_ENV === "development" ? false : true,
-    maxAge: fifteenDaysInMilliseconds, // Set maxAge for 15 days
+    sameSite: process.env.NODE_ENV === "development" ? "lax" : "none", 
+    secure: process.env.NODE_ENV !== "development", // HTTPS for production only
+    maxAge: fifteenDaysInMilliseconds, // Expire in 15 days
   });
 
   res.json({
@@ -18,13 +17,16 @@ export const createCookie = (user, res, message, statusCode = 200) => {
     message,
   });
 };
+
 export const deleteCookie = (req, res) => {
-  res.clearCookie("token", {
+  res.cookie("token", "", { 
     path: "/",
     httpOnly: true,
-    sameSite: process.env.NODE_ENV === "development" ? 'lax' : 'none',
-    secure: process.env.NODE_ENV === "development" ? false : true,
+    sameSite: process.env.NODE_ENV === "development" ? "lax" : "none", 
+    secure: process.env.NODE_ENV !== "development", // Secure in production
+    expires: new Date(Date.now()), // Expire immediately
   });
+
   res.json({
     success: true,
     message: "Logged out successfully",

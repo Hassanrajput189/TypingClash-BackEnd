@@ -8,18 +8,23 @@ const server = http.createServer(app);
 const port = process.env.PORT || 5000;
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:5173" ,"https://typing-clash-front-end.vercel.app",
+    origin: [
+      "http://localhost:5173",
+      "https://typing-clash-front-end.vercel.app",
       "https://typing-clash-front-end-git-main-hassanrajput189s-projects.vercel.app"
     ],
     methods: ["GET", "POST"],
     credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization", "Origin", "X-Requested-With", "Cookie"],
-  },
+    transports: ['websocket', 'polling'],
+    allowedHeaders: ["Content-Type", "Authorization", "Origin", "X-Requested-With", "Cookie"]
+    
+  }
 });
-
 connectDB();
 
 setupSocket(io);
-server.listen(port, () => {
-  console.log(`Server woking in ${process.env.NODE_ENV} mode and port is ${port}`);
+
+server.listen(port, '0.0.0.0', () => {
+  console.log("Server is running on port 5000");
 });
+
