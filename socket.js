@@ -3,7 +3,6 @@ const setupSocket = (io) => {
 
   io.on("connection", (socket) => {
     console.log("socket is connected", socket.id);
-
     socket.on("joinRoom", ({ room, message }) => {
       // Leave previous room
       if (socket.room) {
@@ -27,7 +26,6 @@ const setupSocket = (io) => {
       rooms.get(room).set(socket.id, {
         id: socket.id,
         wpm: 0, // Default values (update them later)
-        cpm: 0,
         mistakes: 0,
       });
 
@@ -35,52 +33,47 @@ const setupSocket = (io) => {
       updatePlayerList(room);
     });
 
-    socket.on("updateStats", ({ wpm, cpm, mistakes }) => {
+    socket.on("startGame",()=>{
+      io.to(socket.room).emit("gameStart");
+    })
+    
+    socket.on("updateStats", ({ wpm, mistakes }) => {
       if (socket.room) {
         const roomPlayers = rooms.get(socket.room);
         if (roomPlayers) {
           const player = roomPlayers.get(socket.id);
           if (player) {
             player.wpm = wpm;
-            player.cpm = cpm;
             player.mistakes = mistakes;
             io.to(socket.room).emit("playerStats", player);
           }
         }
       }
     });
+    
     socket.on("checkWinner", (room) => {
-      if (!rooms.has(room)) {
-        io.to(room).emit("message", `no room found`);
-        return;
+      if (!rooms.has(room) || rooms.get(room).size < 2) {
+          io.to(room).emit("message", `No room found or not enough players`);
+          return;
       }
-
+  
       const playersInRoom = Array.from(rooms.get(room)?.values() || []);
-
-      let winner = null;
-      let lowestMistakes = Infinity;
-
-      for (const player of playersInRoom) {
-        if (player.mistakes < lowestMistakes) {
-          lowestMistakes = player.mistakes;
-          winner = player;
-        } else if (player.mistakes === lowestMistakes) {
-          if (player.wpm > winner.wpm) {
-            winner = player;
-          } else if (player.wpm === winner.wpm) {
-            if (player.cpm > winner.cpm) {
-              winner = player;
-            }
-          }
-        }
-      }
-
-      if (winner) {
-        io.to(room).emit("message", `${winner.id} is the winner of ${room}!`);
-      } else {
-        io.to(room).emit("message", `It's a tie in ${room}!`);
-      }
-    });
+  
+      // Sort players based on mistakes (ascending), WPM (descending)
+      const rankedPlayers = playersInRoom.sort((a, b) => {
+          if (a.mistakes !== b.mistakes) return a.mistakes - b.mistakes; // Fewer mistakes first
+          if (a.wpm !== b.wpm) return b.wpm - a.wpm; // Higher WPM next
+      });
+  
+      // Emit ranked list
+      io.to(room).emit("ranking", rankedPlayers.map((player, index) => ({
+        rank: index + 1,
+        id: player.id,
+        wpm: player.wpm,
+        mistakes: player.mistakes
+    })));
+  });
+  
 
     socket.on("disconnect", () => {
       console.log("User disconnected:", socket.id);
