@@ -31,6 +31,6 @@ connectDB();
 setupSocket(io);
 
 server.listen(port, '0.0.0.0', () => {
-  console.log("Server is running on port 5000");
+  console.log(`Server is running on port ${port}`);
 });
 
