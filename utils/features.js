@@ -1,20 +1,16 @@
 import jwt from 'jsonwebtoken'
-export const createCookie = (user, res, message, statusCode = 200) => {
+import {User} from '../models/user.js';
+export const createCookie = (user, res, statusCode = 200) => {
   const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: "15d" });
 
   const fifteenDaysInMilliseconds = 15 * 24 * 60 * 60 * 1000;
 
-  res.status(statusCode).cookie("token", token, {
+  return res.status(statusCode).cookie("token", token, {
     path: "/",
     httpOnly: true,
     sameSite: process.env.NODE_ENV === "development" ? "lax" : "none", 
     secure: process.env.NODE_ENV !== "development", // HTTPS for production only
     maxAge: fifteenDaysInMilliseconds, // Expire in 15 days
-  });
-
-  res.json({
-    success: true,
-    message,
   });
 };
 

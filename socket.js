@@ -1,92 +1,146 @@
 const setupSocket = (io) => {
   const rooms = new Map();
 
-  io.on("connection", (socket) => {
-    console.log("socket is connected", socket.id);
-    socket.on("joinRoom", ({ room, message }) => {
+  const getRoomList = () => {
+    const roomList = Array.from(rooms.entries()).map(([name, players]) => ({
+      name: name,
+      count: players.size,
+    }));
+    return roomList;
+  };
+
+  const updatePlayerList = (room) => {
+    if (!rooms.has(room)) return;
+    const players = Array.from(rooms.get(room).values());
+    io.to(room).emit("playerList", players);
+  };
+
+  io.on("connection", async (socket) => {
+    // Send room list ONLY to requesting client
+    socket.on("getRooms", () => {
+      const roomList = getRoomList();
+      socket.emit("roomList", roomList);
+    });
+
+    socket.on("joinRoom", ({ room, message, userName }) => {
+      const previousRoom = socket.room;
+      if (
+        previousRoom === room &&
+        rooms.has(room) &&
+        rooms.get(room).has(socket.id)
+      ) {
+        io.to(socket.id).emit("message", "You are already in this room.");
+        return;
+      }
       // Leave previous room
-      if (socket.room) {
-        socket.leave(socket.room);
-        if (rooms.has(socket.room)) {
-          rooms.get(socket.room).delete(socket.id);
-          updatePlayerList(socket.room);
+      if (previousRoom) {
+        socket.leave(previousRoom);
+        if (rooms.has(previousRoom)) {
+          const previousRoomPlayers = rooms.get(previousRoom);
+          previousRoomPlayers.delete(socket.id);
+
+          if (previousRoomPlayers.size === 0) {
+            rooms.delete(previousRoom);
+          } else {
+            updatePlayerList(previousRoom);
+          }
         }
       }
 
-      // Join new room
-      socket.join(room);
-      socket.room = room;
+      // Prevent joining full room
+      if (rooms.get(room)?.size >= 4) {
+        io.to(socket.id).emit("message", "Room is full");
+        return;
+      } else {
+        socket.join(room);
+        socket.room = room;
+      }
 
       // Ensure room exists
       if (!rooms.has(room)) {
         rooms.set(room, new Map());
       }
 
-      // Add player with default stats
-      rooms.get(room).set(socket.id, {
-        id: socket.id,
-        wpm: 0, // Default values (update them later)
-        mistakes: 0,
-      });
+      // Add player with default stats if room size is less than 4
+      if (rooms.get(room).size < 4) {
+        rooms.get(room).set(socket.id, {
+          id: socket.id,
+          wpm: 0,
+          mistakes: 0,
+          progress: 0,
+          userName: userName || "Anonymous",
+        });
+      }
 
       io.to(room).emit("message", message);
       updatePlayerList(room);
+
+      // Emit updated room list to ALL clients
+      const roomList = getRoomList();
+      io.emit("roomList", roomList);
     });
 
-    socket.on("startGame",()=>{
-      io.to(socket.room).emit("gameStart");
-    })
+    socket.on("leaveRoom", (room) => {
+      if( !socket.room || !rooms.has(socket.room)) {
+        io.to(socket.id).emit("message", "You are not in a room.");
+        return;
+      }
+      const roomPlayers = rooms.get(socket.room);
+      const player = roomPlayers.get(socket.id);
+      if (room && rooms.has(room)) {
+        roomPlayers.delete(socket.id);
+
+        if (roomPlayers.size === 0) {
+          rooms.delete(room);
+        } else {
+          updatePlayerList(room);
+        }
+      }
+      io.to(room).emit("message", `${player.userName} left`);
+      socket.leave(room);
+      socket.room = null;
     
-    socket.on("updateStats", ({ wpm, mistakes }) => {
+      // Emit updated room list to ALL clients
+      const roomList = getRoomList();
+      io.emit("roomList", roomList);
+    });
+    socket.on("startGame", () => {
       if (socket.room) {
+        io.to(socket.room).emit("gameStart");
+        io.to(socket.room).emit("message", "Game started!");
+      }
+    });
+
+    socket.on("updateStats", ({ wpm, mistakes, progress }) => {
+      if (socket.room && rooms.has(socket.room)) {
         const roomPlayers = rooms.get(socket.room);
-        if (roomPlayers) {
-          const player = roomPlayers.get(socket.id);
-          if (player) {
-            player.wpm = wpm;
-            player.mistakes = mistakes;
-            io.to(socket.room).emit("playerStats", player);
-          }
+        const player = roomPlayers.get(socket.id);
+        if (player) {
+          player.wpm = wpm;
+          player.mistakes = mistakes;
+          player.progress = progress;
+          io.to(socket.room).emit("playerStats", player);
         }
       }
     });
-    
-    socket.on("checkWinner", (room) => {
-      if (!rooms.has(room) || rooms.get(room).size < 2) {
-          io.to(room).emit("message", `No room found or not enough players`);
-          return;
-      }
-  
-      const playersInRoom = Array.from(rooms.get(room)?.values() || []);
-  
-      // Sort players based on mistakes (ascending), WPM (descending)
-      const rankedPlayers = playersInRoom.sort((a, b) => {
-          if (a.mistakes !== b.mistakes) return a.mistakes - b.mistakes; // Fewer mistakes first
-          if (a.wpm !== b.wpm) return b.wpm - a.wpm; // Higher WPM next
-      });
-  
-      // Emit ranked list
-      io.to(room).emit("ranking", rankedPlayers.map((player, index) => ({
-        rank: index + 1,
-        id: player.id,
-        wpm: player.wpm,
-        mistakes: player.mistakes
-    })));
-  });
-  
 
     socket.on("disconnect", () => {
-      console.log("User disconnected:", socket.id);
-      if (socket.room) {
-        rooms.get(socket.room).delete(socket.id);
-        updatePlayerList(socket.room);
-      }
-    });
+      const room = socket.room;
 
-    function updatePlayerList(room) {
-      const players = Array.from(rooms.get(room).values());
-      io.to(room).emit("playerList", players);
-    }
+      if (room && rooms.has(room)) {
+        const roomPlayers = rooms.get(room);
+        roomPlayers.delete(socket.id);
+
+        if (roomPlayers.size === 0) {
+          rooms.delete(room);
+        } else {
+          updatePlayerList(room);
+        }
+      }
+      // Always emit the latest room list after a disconnect
+      const roomList = getRoomList();
+      io.emit("roomList", roomList);
+    });
   });
 };
 
