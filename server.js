@@ -70,6 +70,6 @@ const io = new Server(server, {
 connectDB();
 setupSocket(io);
 
-server.listen(port, '0.0.0.0', () => {
+server.listen(port, () => {
   console.log(`Server is running on port ${port}`);
  });
