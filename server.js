@@ -18,8 +18,6 @@ config({
 // Express app setup
 const app = express();
 
-app.use(express.json());
-app.use(cookieParser());
 app.use(cors({
   origin: [
     process.env.CLIENT_URL,
@@ -36,7 +34,9 @@ app.use(cors({
   ],
 }));
 
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({limit: "20kb"}));
+app.use(cookieParser());
+app.use(express.urlencoded({ extended: true ,limit: "20kb"}));
 app.use('/api/users/', userRoutes);
 app.use(handleError);
 
@@ -67,9 +67,17 @@ const io = new Server(server, {
   }
 });
 
-connectDB();
-setupSocket(io);
-
-server.listen(port, () => {
+connectDB().then(() => {
+  server.on('error', (error) => {
+    console.error("Server error:", error.message);
+  });
+  setupSocket(io);
+  server.listen(port, () => {
   console.log(`Server is running on port ${port}`);
  });
+}).catch((error) => {
+  console.error("Database connection failed:", error.message);
+  process.exit(1);
+});
+
+
