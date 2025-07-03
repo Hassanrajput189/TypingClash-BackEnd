@@ -1,3 +1,4 @@
+import { getCorrectWrong, calWPM, calPercentage } from "./utils/features.js";
 const setupSocket = (io) => {
   const rooms = new Map();
 
@@ -7,8 +8,8 @@ const setupSocket = (io) => {
       count: players.size,
     }));
     return roomList;
+    a;
   };
-
   const updatePlayerList = (room) => {
     if (!rooms.has(room)) return;
     const players = Array.from(rooms.get(room).values());
@@ -67,7 +68,7 @@ const setupSocket = (io) => {
           id: socket.id,
           wpm: 0,
           mistakes: 0,
-          progress: 0,
+          percentage: 0,
           userName: userName || "Anonymous",
         });
       }
@@ -81,7 +82,7 @@ const setupSocket = (io) => {
     });
 
     socket.on("leaveRoom", (room) => {
-      if( !socket.room || !rooms.has(socket.room)) {
+      if (!socket.room || !rooms.has(socket.room)) {
         io.to(socket.id).emit("message", "You are not in a room.");
         return;
       }
@@ -99,7 +100,7 @@ const setupSocket = (io) => {
       io.to(room).emit("message", `${player.userName} left`);
       socket.leave(room);
       socket.room = null;
-    
+
       // Emit updated room list to ALL clients
       const roomList = getRoomList();
       io.emit("roomList", roomList);
@@ -111,16 +112,30 @@ const setupSocket = (io) => {
       }
     });
 
-    socket.on("updateStats", ({ wpm, mistakes, progress }) => {
+    socket.on("calStats", (correctWrong) => {
+      const { correctCharCount, mistakes } = getCorrectWrong(correctWrong);
+      const wpm = calWPM(correctCharCount);
+      const percentage = calPercentage(correctCharCount, correctWrong.length);
+
+     
+      // Check if this is a multiplayer (room) scenario
       if (socket.room && rooms.has(socket.room)) {
         const roomPlayers = rooms.get(socket.room);
         const player = roomPlayers.get(socket.id);
         if (player) {
           player.wpm = wpm;
           player.mistakes = mistakes;
-          player.progress = progress;
-          io.to(socket.room).emit("playerStats", player);
+          player.percentage = percentage;
+          io.to(socket.room).emit("playerStats", player); // multiplayer broadcast
         }
+      } else {
+        // Single-player mode – send stats only to the current client
+        socket.emit("playerStats", {
+          id:socket.id,
+          wpm,
+          mistakes: mistakes,
+          percentage,
+        });
       }
     });
 

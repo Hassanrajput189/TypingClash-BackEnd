@@ -27,3 +27,30 @@ export const deleteCookie = (req, res) => {
     message: "Logged out successfully",
   });
 };
+export const getCorrectWrong =(correctWrong) =>{
+    const newCorrectWrong = [...correctWrong]
+    const correctCharCount = newCorrectWrong.filter(
+          (status) => status === "correct"
+        ).length;
+    const mistakes = newCorrectWrong.filter(
+          (status) => status === "wrong"
+        ).length;
+      return {
+        correctCharCount,
+        mistakes 
+      }
+  }
+ export  const calWPM = (correctChars) =>{
+    let wpm = correctChars/5;
+    
+    if (wpm > 0) {
+      wpm = Math.round(wpm);
+    }else {
+      wpm = 0;
+    }
+    return wpm;
+  }
+  export const calPercentage = (completed,total)=>{
+      const percentage = Math.floor((completed/total)*100)
+      return percentage
+  }

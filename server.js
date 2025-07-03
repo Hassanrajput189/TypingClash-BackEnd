@@ -73,6 +73,7 @@ connectDB().then(() => {
   });
   setupSocket(io);
   server.listen(port, () => {
+  
   console.log(`Server is running on port ${port}`);
  });
 }).catch((error) => {

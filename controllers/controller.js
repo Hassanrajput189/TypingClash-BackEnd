@@ -1,6 +1,6 @@
 import bcrypt from "bcrypt";
 import { User } from "../models/user.js";
-import { createCookie, deleteCookie } from "../utils/features.js";
+import { createCookie, deleteCookie,getCorrectWrong,calWPM,calPercentage } from "../utils/features.js";
 import ErrorHandler from "../middlewares/error.js";
 
 
@@ -84,3 +84,23 @@ export const getUser = (req, res, next) => {
     next(error);
   }
 };
+export const getStats = (req,res,next)=>{
+  try {
+    const { correctWrong } = req.body;
+    
+    if (!correctWrong) {
+      return res.status(400).json({ error: "No correctWrong data provided" });
+    }
+    const {correctCharCount, mistakes } = getCorrectWrong(correctWrong);
+    const wpm = calWPM(correctCharCount);
+    const percentage = calPercentage(correctCharCount,correctWrong.length)
+    return res.status(200).json({
+      success: true,
+      wpm,
+      mistakes,
+      percentage,
+    });
+  } catch (error) {
+    next(error)
+  }
+}
