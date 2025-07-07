@@ -50,7 +50,7 @@ export const getCorrectWrong =(correctWrong) =>{
     }
     return wpm;
   }
-  export const calPercentage = (completed,total)=>{
-      const percentage = Math.floor((completed/total)*100)
-      return percentage
+  export const calAccuracy = (completed,total)=>{
+      const accuracy = Math.floor((completed/total)*100)
+      return accuracy;
   }

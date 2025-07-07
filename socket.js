@@ -1,4 +1,5 @@
-import { getCorrectWrong, calWPM, calPercentage } from "./utils/features.js";
+import { getCorrectWrong, calWPM, calAccuracy } from "./utils/features.js"
+import {User} from "./models/user.js";
 const setupSocket = (io) => {
   const rooms = new Map();
 
@@ -7,14 +8,35 @@ const setupSocket = (io) => {
       name: name,
       count: players.size,
     }));
-    return roomList;
-    a;
+    return roomList
   };
   const updatePlayerList = (room) => {
     if (!rooms.has(room)) return;
     const players = Array.from(rooms.get(room).values());
     io.to(room).emit("playerList", players);
   };
+  const updateHighScore = async (userId, wpm, accuracy) => {
+    try {
+        const user = await User.findById(userId);
+        if (!user) {
+            console.error('User not found for ID:', userId);
+            return;
+        }
+        
+        // Check if user has no high score or if new score is higher
+        if (!user.highScore || wpm > user.highScore.wpm) {
+            user.highScore = {
+                wpm,
+                accuracy,
+                date: new Date()
+            };
+            await user.save();
+        }
+    } catch (error) {
+        console.error('Error updating high score:', error);
+    }
+};
+
 
   io.on("connection", async (socket) => {
     // Send room list ONLY to requesting client
@@ -68,7 +90,7 @@ const setupSocket = (io) => {
           id: socket.id,
           wpm: 0,
           mistakes: 0,
-          percentage: 0,
+          accuracy: 0,
           userName: userName || "Anonymous",
         });
       }
@@ -97,7 +119,7 @@ const setupSocket = (io) => {
           updatePlayerList(room);
         }
       }
-      io.to(room).emit("message", `${player.userName} left`);
+      io.to(room).emit("message", `${player.userName} left room ${room}`);
       socket.leave(room);
       socket.room = null;
 
@@ -112,12 +134,23 @@ const setupSocket = (io) => {
       }
     });
 
-    socket.on("calStats", (correctWrong) => {
+    socket.on("updateProgress", (charIndex) => {
+      if (socket.room && rooms.has(socket.room)) {
+        const roomPlayers = rooms.get(socket.room);
+        const player = roomPlayers.get(socket.id);
+        if (player) {
+          player.charIndex = charIndex;
+          io.to(socket.room).emit("playerProgress", player);
+        }
+      }
+    });
+
+    socket.on("calStats", (dbID,correctWrong) => {
       const { correctCharCount, mistakes } = getCorrectWrong(correctWrong);
       const wpm = calWPM(correctCharCount);
-      const percentage = calPercentage(correctCharCount, correctWrong.length);
-
-     
+      const accuracy = calAccuracy(correctCharCount, correctWrong.length);
+      updateHighScore(dbID, wpm, accuracy);
+      
       // Check if this is a multiplayer (room) scenario
       if (socket.room && rooms.has(socket.room)) {
         const roomPlayers = rooms.get(socket.room);
@@ -125,7 +158,7 @@ const setupSocket = (io) => {
         if (player) {
           player.wpm = wpm;
           player.mistakes = mistakes;
-          player.percentage = percentage;
+          player.accuracy = accuracy;
           io.to(socket.room).emit("playerStats", player); // multiplayer broadcast
         }
       } else {
@@ -134,7 +167,7 @@ const setupSocket = (io) => {
           id:socket.id,
           wpm,
           mistakes: mistakes,
-          percentage,
+          accuracy,
         });
       }
     });
@@ -160,3 +193,5 @@ const setupSocket = (io) => {
 };
 
 export { setupSocket };
+
+

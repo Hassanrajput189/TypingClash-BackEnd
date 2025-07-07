@@ -1,6 +1,6 @@
 import bcrypt from "bcrypt";
 import { User } from "../models/user.js";
-import { createCookie, deleteCookie,getCorrectWrong,calWPM,calPercentage } from "../utils/features.js";
+import { createCookie, deleteCookie,getCorrectWrong,calWPM,calAccuracy } from "../utils/features.js";
 import ErrorHandler from "../middlewares/error.js";
 
 
@@ -17,7 +17,15 @@ export const register = async (req, res, next) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     user = await User.create({ name, email, password: hashedPassword });
 
-    createCookie(user, res, "User registered successfully", 201);
+    createCookie(user, res, 201);
+    const userObj = user.toObject();
+    delete userObj.password;
+
+    res.status(200).json({
+      success: true,
+      message: `User Registered Successfully!`,
+      user: userObj, // User info (without password)
+    });
   } catch (error) {
     next(error);
   }
@@ -39,7 +47,7 @@ export const login = async (req, res, next) => {
     }
 
     // 3. Create and set JWT in cookie
-    const cookie = createCookie(user, res, 200);
+    createCookie(user, res, 200);
 
     // 4. Remove password from user object before sending it in response
     const userObj = user.toObject();
@@ -72,8 +80,6 @@ export const sendText = (req, res, next) => {
     next(error);
   }
 };
-
-
 export const getUser = (req, res, next) => {
   try {
     res.status(200).json({
@@ -84,23 +90,63 @@ export const getUser = (req, res, next) => {
     next(error);
   }
 };
-export const getStats = (req,res,next)=>{
+export const getStats = async (req,res,next)=>{
   try {
     const { correctWrong } = req.body;
     
     if (!correctWrong) {
       return res.status(400).json({ error: "No correctWrong data provided" });
     }
+    
     const {correctCharCount, mistakes } = getCorrectWrong(correctWrong);
     const wpm = calWPM(correctCharCount);
-    const percentage = calPercentage(correctCharCount,correctWrong.length)
+    const accuracy = calAccuracy(correctCharCount,correctWrong.length);
+    
+    // Update high score if this is a better score
+    if (req.user) {
+      const user = await User.findById(req.user._id);
+      if (!user.highScore || wpm > user.highScore.wpm) {
+        user.highScore = {
+          wpm,
+          accuracy,
+          date: new Date()
+        };
+        await user.save();
+        console.log(`High score updated for user ${user.name}: ${wpm} WPM`);
+      }
+    }
+    
     return res.status(200).json({
       success: true,
       wpm,
       mistakes,
-      percentage,
+      accuracy,
     });
   } catch (error) {
     next(error)
   }
 }
+
+export const getLeaderboard = async (req, res) => {
+    try {
+        const leaderboard = await User.find({}, {
+            name: 1,
+            'highScore.wpm': 1,
+            'highScore.accuracy': 1,
+            'highScore.date': 1
+        })
+        .sort({ 'highScore.wpm': -1 })
+        .limit(100);
+
+        res.status(200).json({
+            success: true,
+            leaderboard
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error fetching leaderboard"
+        });
+    }
+};
+

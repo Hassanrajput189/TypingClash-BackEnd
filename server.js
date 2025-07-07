@@ -1,4 +1,3 @@
-
 import express from 'express';
 import cors from 'cors';
 import userRoutes from './routes/route.js';
@@ -19,9 +18,7 @@ config({
 const app = express();
 
 app.use(cors({
-  origin: [
-    process.env.CLIENT_URL,
-  ],
+  origin: process.env.CLIENT_URL,
   methods: ["GET", "POST"],
   credentials: true,
   allowedHeaders: [
@@ -48,11 +45,11 @@ app.get("/", (req, res) => {
 const server = http.createServer(app);
 const port = process.env.PORT || 5000;
 
+// Also update the Socket.io CORS config
 const io = new Server(server, {
   cors: {
-    origin: [
-      process.env.CLIENT_URL,
-    ],
+    origin: process.env.CLIENT_URL,
+  
     methods: ["GET", "POST"],
     credentials: true,
     transports: ['websocket', 'polling'],
@@ -72,8 +69,7 @@ connectDB().then(() => {
     console.error("Server error:", error.message);
   });
   setupSocket(io);
-  server.listen(port, () => {
-  
+  server.listen(() => {
   console.log(`Server is running on port ${port}`);
  });
 }).catch((error) => {
